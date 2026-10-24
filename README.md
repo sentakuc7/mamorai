@@ -131,8 +131,8 @@ Developed against Wazuh 4.x (indexer = OpenSearch).
 
 ## Contact
 
-- X: [@h_____](https://x.com/) （← 実アカウントに置換）
-- Blog (JP): note「AI職人になろうと思うHjK」
+- X: [@hjkworld_ai](https://x.com/hjkworld_ai)
+- note (JP): [AI職人になろうと思うHjK](https://note.com/hjkworld)
 
 ## License
 
