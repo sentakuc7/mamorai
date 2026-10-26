@@ -1,0 +1,17 @@
+{
+  "mamorai_url": "https://mamorai.example:8444",
+  "wazuh_id": null,
+  "window": "now-24h",
+  "verify_tls": false,
+  "ca_file": "",
+  "refresh_seconds": 60,
+  "com_port": "auto",
+  "brightness": 40,
+  "reverse": false,
+  "fps": 8,
+  "labels": 4,
+  "turing_lib": "",
+  "font": "",
+  "font_bold": "",
+  "lang": "ja"
+}

@@ -1,0 +1,8 @@
+config.json
+countries-110m.json
+mamorai_lcd.log*
+__pycache__/
+*.png
+*.gif
+!docs/*.png
+!docs/*.gif
