@@ -145,6 +145,12 @@ docker compose up -d
 
 ---
 
+## Tools / ツール
+
+- **[MamorAI LCD](tools/lcd/)** — show the attack map (with animation) on a 3.5" USB sub-monitor (Turing Smart Screen Rev A). 攻撃可視化を 3.5 インチ USB サブモニターに常時表示（GPL-3.0）
+
+<img src="tools/lcd/docs/demo.gif" width="360" alt="MamorAI LCD">
+
 ## Dev updates / 開発状況
 
 - [2026-10-25](docs/devlog/2026-10-25.md) — Self-defense (MFA, kill switch), agent pack, AI host scan (WIP) ／ 自己防御・エージェントパック・ホスト AI スキャン

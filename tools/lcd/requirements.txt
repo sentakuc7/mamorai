@@ -1,0 +1,4 @@
+# mamorai_lcd.py itself needs only these two.
+# The LCD driver (turing-smart-screen-python) has its own requirements.txt - install that too.
+Pillow>=10.0
+pyserial>=3.5
