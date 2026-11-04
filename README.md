@@ -153,6 +153,7 @@ docker compose up -d
 
 ## Dev updates / 開発状況
 
+- [2026-11-04](docs/devlog/2026-11-04.md) — Act from the host page (stop / block / isolate, approval-gated, auto-revert), AI host chart, installer prototype; next: forensics ／ ホスト画面からの対処・ホストカルテ・インストーラー試作、次はフォレンジック
 - [2026-10-25](docs/devlog/2026-10-25.md) — Self-defense (MFA, kill switch), agent pack, AI host scan (WIP) ／ 自己防御・エージェントパック・ホスト AI スキャン
 
 ## Roadmap / ロードマップ
