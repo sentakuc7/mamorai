@@ -31,7 +31,9 @@
 
 ### What is MamorAI?
 
-MamorAI is a self-hosted web console that sits on top of your existing **[Wazuh](https://wazuh.com/)** deployment and adds three things:
+MamorAI is a self-hosted security & operations console built on **[Wazuh](https://wazuh.com/)**. Run one installer on a fresh Ubuntu server and it builds **the whole stack from scratch** — Wazuh (manager, indexer, dashboard), MamorAI, and the agent packs for your Windows / Linux hosts. Already running Wazuh? The installer detects it and just adds MamorAI on top.
+
+What MamorAI adds:
 
 | | Feature | Status |
 |---|---|---|
@@ -40,7 +42,9 @@ MamorAI is a self-hosted web console that sits on top of your existing **[Wazuh]
 | ✅ | **Approval Queue** — the AI can *propose* actions (block IP, restart service, patch), but nothing changes state until a human approves it. Every command, diff and rollback is shown before you click. | v0.3 |
 | ⚡ | **Autonomous Response (coming soon)** — turn the dial up and MamorAI acts on its own: **auto-patch** hosts when a critical CVE lands, **auto-block** the source the moment Wazuh detects an intrusion, auto-rollback if a fix breaks something. Opt-in per host, with a kill switch. | v0.4 |
 
-It reads the Wazuh indexer directly, so there is nothing to install on your agents.
+Hosts are enrolled with an **agent pack** (one zip per OS) downloaded from MamorAI — it installs or updates the Wazuh agent and MamorAI's add-ons in one step.
+
+*The installer (`install.sh`) has passed end-to-end tests on a clean Ubuntu server and is still being polished before release.*
 
 ### ⚡ Autonomous Response — coming soon
 
@@ -94,7 +98,9 @@ docker compose up -d
 
 ### MamorAI とは
 
-既存の **[Wazuh](https://wazuh.com/)** 環境の上に載せるセルフホスト型の Web コンソールです。追加するのは次の 3 つ。
+**[Wazuh](https://wazuh.com/)** をベースにした、セルフホスト型のセキュリティ＆運用コンソールです。まっさらな Ubuntu サーバーでインストーラーを 1 本実行するだけで、**Wazuh（manager・indexer・dashboard）から MamorAI、Windows / Linux 端末向けのエージェントパックまで 1 から自動で構築**します。すでに Wazuh を運用中なら、それを検出して MamorAI だけを上に載せます。
+
+MamorAI が加えるもの:
 
 | | 機能 | 状態 |
 |---|---|---|
@@ -103,7 +109,9 @@ docker compose up -d
 | ✅ | **承認キュー** — AI は Action（IP 遮断・サービス再起動・パッチ適用）を *提案* するだけ。人が承認するまで何も変わりません。コマンド全文・差分・ロールバック手順を見てからクリックできます。 | v0.3 |
 | ⚡ | **自律対処（カミングスーン）** — 自律度を上げると MamorAI が自分で動きます。**緊急性の高い脆弱性が出たら AI がホストにパッチを当て**、**Wazuh が侵入を検知したら送信元を自動遮断**、修正が失敗したら自動ロールバック。ホスト単位の opt-in、キルスイッチ付き。 | v0.4 |
 
-Wazuh indexer を直接読むので、エージェント側に入れるものはありません。
+端末は MamorAI からダウンロードする **エージェントパック**（OS ごとに zip 1 つ）で登録します。Wazuh エージェントと MamorAI のアドオンの導入・更新が 1 回で済みます。
+
+*インストーラー（`install.sh`）はまっさらな Ubuntu サーバーでの通しテストを済ませ、公開に向けて仕上げ中です。*
 
 ### ⚡ 自律対処 — カミングスーン
 
