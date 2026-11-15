@@ -4,10 +4,10 @@
 
 セキュリティ上の問題を見つけた場合は、**公開の Issue には書かず**、GitHub の「Security」タブにある **Report a vulnerability**（非公開の報告）から連絡してください。
 
-## 凍結版についての注意
+## 対応について
 
-このリポジトリは凍結版です。報告は読みますが、**修正版を出すことは約束できません**。
-影響が大きいものは、README の「既知の制限・問題」に追記して、利用者が判断できるようにします。
+報告はすべて確認し、必要に応じて修正版を出します（時期は約束できません）。
+すぐに直せないものは、README の「既知の制限・問題」に追記して、利用者が判断できるようにします。
 
 ## 利用者の方へ
 
@@ -21,9 +21,9 @@
 
 Please **do not open a public issue**. Use **Report a vulnerability** on the repository's **Security** tab (private report).
 
-## Frozen edition
+## Handling
 
-This repository is frozen. Reports will be read, but **fixes are not guaranteed**. Significant issues will be documented in the README's known limitations so users can decide.
+Every report is reviewed and fixes are released as needed (no fixed timeline). Issues that cannot be fixed right away are documented in the README's known limitations so users can decide.
 
 ## For users
 

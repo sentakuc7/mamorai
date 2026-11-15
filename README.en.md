@@ -1,10 +1,10 @@
-# MamorAI for Wazuh — frozen edition
+# MamorAI for Wazuh
 
 [日本語](README.md)
 
-> **This repository is frozen.** Development of the Wazuh edition of MamorAI has ended here. No new features, bug fixes or security fixes will be released.
-> The next MamorAI is being developed separately and does not use Wazuh (it is a different codebase).
-> Use this code as a reference implementation of "Wazuh + AI investigation + human-approved response".
+> **The Wazuh edition has reached a stable milestone.**
+> New feature work has moved to the next MamorAI, a separate codebase that does not use Wazuh.
+> This edition stays available, and bug and security fixes are made as needed.
 
 MamorAI is an AI-assisted operations console that runs on top of [Wazuh](https://wazuh.com/), the open-source SIEM / XDR.
 The AI investigates Wazuh alerts and vulnerabilities and proposes actions; **only actions a human approves** are executed on hosts.
@@ -110,7 +110,7 @@ No telemetry is sent.
 
 ## Known limitations
 
-- Frozen: dependencies will not be updated. As of 2026-11-15, `npm audit` (production dependencies) reports 4 issues that need major upgrades and are not fixed: zod 3.x, react-router 6.x (no SSR is used), image-size 1.x (via pptxgenjs).
+- As of 2026-11-15, `npm audit` (production dependencies) reports 4 issues that need major upgrades and are not fixed: zod 3.x, react-router 6.x (no SSR is used), image-size 1.x (via pptxgenjs). Their impact is limited; they will be addressed if needed.
 - Some Wazuh settings (enabling archives, agent groups, generic rules) are not automated by the installer.
 - Numbers like `EDR-123` in code comments refer to the author's internal tracker.
 
