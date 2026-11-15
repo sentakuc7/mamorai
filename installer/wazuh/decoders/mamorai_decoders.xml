@@ -1,0 +1,21 @@
+<!-- EDR-89: MamorAI (EDR Console) container logs via Docker journald driver (tag: mamorai). Pino JSON lines. -->
+<decoder name="mamorai">
+  <program_name>^mamorai$</program_name>
+</decoder>
+
+<decoder name="mamorai_json">
+  <parent>mamorai</parent>
+  <plugin_decoder>JSON_Decoder</plugin_decoder>
+</decoder>
+
+<!-- EDR-121: result lines of the MamorAI active-response add-on (mamorai-ar.ps1) in active-responses.log:
+     mamorai-ar: {"mamorai_ar":{"id":"ma123","op":"isolate","ok":true,"detail":"...","version":"1.0.0"}} -->
+<decoder name="mamorai-ar">
+  <prematch>^mamorai-ar: </prematch>
+</decoder>
+
+<decoder name="mamorai-ar-json">
+  <parent>mamorai-ar</parent>
+  <prematch offset="after_parent">^{</prematch>
+  <plugin_decoder offset="after_parent">JSON_Decoder</plugin_decoder>
+</decoder>

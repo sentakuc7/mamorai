@@ -1,0 +1,32 @@
+<!-- EDR-90: Wazuh / MamorAI watch their own configuration (syscheck on the manager). IDs 100730-100739. -->
+<group name="mamorai,mamorai_selfmon,syscheck,">
+
+  <rule id="100730" level="8">
+    <if_sid>550,553,554</if_sid>
+    <field name="file" type="pcre2">^/var/ossec/etc/(rules|decoders)/</field>
+    <description>Wazuh detection rules or decoders changed: $(file)</description>
+    <group>mamorai_tamper,</group>
+  </rule>
+
+  <rule id="100731" level="8">
+    <if_sid>550,553,554</if_sid>
+    <field name="file" type="pcre2">^/var/ossec/etc/(ossec\.conf|local_internal_options\.conf|shared/)</field>
+    <description>Wazuh manager configuration changed: $(file)</description>
+    <group>mamorai_tamper,</group>
+  </rule>
+
+  <rule id="100732" level="8">
+    <if_sid>550,553,554</if_sid>
+    <field name="file" type="pcre2">^/opt/(edr-console|mamorai)/</field>
+    <description>MamorAI installation files changed: $(file)</description>
+    <group>mamorai_tamper,</group>
+  </rule>
+
+  <rule id="100733" level="10">
+    <if_sid>550,553,554</if_sid>
+    <field name="file" type="pcre2">^/etc/(wazuh-dashboard/|wazuh-indexer/opensearch-security/)</field>
+    <description>Wazuh dashboard / indexer security configuration changed: $(file)</description>
+    <group>mamorai_tamper,</group>
+  </rule>
+
+</group>

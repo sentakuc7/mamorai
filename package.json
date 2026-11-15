@@ -1,0 +1,13 @@
+{
+  "name": "edr-console",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "workspaces": ["server", "web"],
+  "scripts": {
+    "build": "npm run build -w web && npm run build -w server",
+    "dev:server": "npm run dev -w server",
+    "dev:web": "npm run dev -w web",
+    "test": "npm test -w server"
+  }
+}

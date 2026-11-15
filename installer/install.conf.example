@@ -1,0 +1,20 @@
+# MamorAI installer — answers for an unattended run:  sudo ./install.sh --config install.conf
+# KEY=VALUE per line. Never put secrets here: point to a root-only file with *_FILE instead.
+
+ADMIN_EMAIL=admin@example.com        # MamorAI login ID of the first administrator
+ADMIN_PASSWORD_FILE=/root/admin.pw     # required: MamorAI admin password (12+ chars, root-only file)
+SERVER_NAME=mamorai01                # shown in Wazuh / MamorAI
+LAN_ADDR=10.20.30.10                # address the agents connect to (default: detected)
+LAN_CIDR=10.20.30.0/24              # allowed by the firewall (UFW=yes)
+CONNECT=lan                          # lan | tailscale | public
+#PUBLIC_ADDR=edr.example.com         # CONNECT=public
+#TS_AUTHKEY_FILE=/root/ts.key        # CONNECT=tailscale, optional: file with the tskey-auth-... key (root, 600). Omit → enter the key in MamorAI (設定 › エージェントパック › 秘密情報)
+#TS_AUTHKEY_FILE_DELETE=yes          # delete that file after use
+#TS_EXPIRES=2027-01-23               # key expiry → MamorAI reminds you 14 days before
+LLM_PROVIDER=openrouter              # openrouter | anthropic | ollama | none
+#LLM_API_KEY_FILE=/root/llm.key      # file with the API key (root, 600)
+#LLM_API_KEY_FILE_DELETE=yes
+#OLLAMA_URL=http://127.0.0.1:11434
+WINDOWS_ADDON=yes                    # build the signed Windows add-on (host actions on Windows)
+UFW=no                               # yes: enable ufw, allow SSH + LAN_CIDR → 1514/1515/8444/443
+WAZUH_VERSION=4.14                   # major.minor of the official installer (packages.wazuh.com/<ver>/wazuh-install.sh)

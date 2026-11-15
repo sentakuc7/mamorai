@@ -1,0 +1,59 @@
+<!-- EDR Console 攻撃可視化: 家庭用ルーター / FW 拒否ログのデコーダ（EDR-74）。配置先: /var/ossec/etc/decoders/edr-fw-decoders.xml -->
+
+<!-- 1. Linux kernel netfilter（OpenWrt / 汎用 iptables・nftables の LOG）
+     例: kernel: [12345.6] DROP wan IN=eth0 OUT= MAC=... SRC=1.2.3.4 DST=10.20.30.1 LEN=40 ... PROTO=TCP SPT=54321 DPT=22 -->
+<decoder name="edr-netfilter">
+  <prematch>IN=\S* OUT=\S* </prematch>
+</decoder>
+<decoder name="edr-netfilter-fields">
+  <parent>edr-netfilter</parent>
+  <regex offset="after_parent">SRC=(\S+) DST=(\S+) \.*PROTO=(\w+)\.*DPT=(\d+)</regex>
+  <order>srcip, dstip, protocol, dstport</order>
+</decoder>
+<decoder name="edr-netfilter-prefix">
+  <parent>edr-netfilter</parent>
+  <regex>(\w+) \w+ IN=</regex>
+  <order>action</order>
+</decoder>
+
+<!-- 2. Yamaha RTX / NVR フィルタ通知
+     例: [INSPECT] PP[01][in][1020] TCP 1.2.3.4:54321 > 203.0.113.5:22 (2024/01/01 00:00:00)
+     例: PP[01] Rejected at IN(1020) TCP 1.2.3.4:54321 > 203.0.113.5:22 -->
+<decoder name="edr-yamaha-reject">
+  <prematch>Rejected at </prematch>
+</decoder>
+<decoder name="edr-yamaha-reject-fields">
+  <parent>edr-yamaha-reject</parent>
+  <regex offset="after_prematch">(\w+)\((\d+)\) (\w+) (\d+.\d+.\d+.\d+):(\d+) > (\d+.\d+.\d+.\d+):(\d+)</regex>
+  <order>direction, filter_id, protocol, srcip, srcport, dstip, dstport</order>
+</decoder>
+<decoder name="edr-yamaha-inspect">
+  <prematch>[INSPECT] </prematch>
+</decoder>
+<decoder name="edr-yamaha-inspect-fields">
+  <parent>edr-yamaha-inspect</parent>
+  <regex offset="after_prematch">\.*\[(\w+)\]\[(\d+)\] (\w+) (\d+.\d+.\d+.\d+):(\d+) > (\d+.\d+.\d+.\d+):(\d+)</regex>
+  <order>direction, filter_id, protocol, srcip, srcport, dstip, dstport</order>
+</decoder>
+
+<!-- 3. NEC IX  access-list deny
+     例: IX2215 ACL: deny tcp 1.2.3.4(54321) -> 203.0.113.5(22) on GigaEthernet0.0 -->
+<decoder name="edr-necix-acl">
+  <prematch>ACL: deny </prematch>
+</decoder>
+<decoder name="edr-necix-acl-fields">
+  <parent>edr-necix-acl</parent>
+  <regex offset="after_prematch">(\w+) (\d+.\d+.\d+.\d+)\((\d+)\) -> (\d+.\d+.\d+.\d+)\((\d+)\)</regex>
+  <order>protocol, srcip, srcport, dstip, dstport</order>
+</decoder>
+
+<!-- 4. Sophos XG / Sophos Firewall  key=value syslog（EDR-58 の補完。既に自作デコーダがある環境では重複しないよう名前を変える）
+     例: device="SFW" date=... log_type="Firewall" log_subtype="Denied" ... src_ip=1.2.3.4 dst_ip=203.0.113.5 protocol="TCP" dst_port=22 -->
+<decoder name="edr-sophos-kv">
+  <prematch>log_type="Firewall" log_subtype="Denied"|log_type="Firewall" log_subtype="Invalid Traffic"</prematch>
+</decoder>
+<decoder name="edr-sophos-kv-fields">
+  <parent>edr-sophos-kv</parent>
+  <regex>src_ip=(\S+) \.*dst_ip=(\S+) \.*protocol="(\w+)"\.*dst_port=(\d+)</regex>
+  <order>srcip, dstip, protocol, dstport</order>
+</decoder>

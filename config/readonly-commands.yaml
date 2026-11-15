@@ -1,0 +1,300 @@
+# Commands the approval gate treats as read-only (C5 / EDR-87). Anything not listed, or listed
+# with a matching deny rule, is classified as a write and requires approval.
+#
+# Rule fields (all optional except cmd):
+#   allowArgs     sub-commands (checked at the first positional argument) or flags (anywhere)
+#   allowPattern  regex on the joined arguments that makes the call read-only
+#   denyArgs      tokens that make it a write: exact token, "-x" also hits "-x=..", "x*" = prefix,
+#                 "a b" = consecutive tokens
+#   denyPattern   regex on the joined arguments that makes it a write
+#   valueFlags    flags that take a value (skipped when locating the sub-command)
+#   allowBare     no arguments → read
+#   requireArgs   one of these tokens must be present ("re:<regex>" for a pattern)
+#   allowPositional / noPositional   restrict positional arguments
+# A variable or $(...) used as an argument of a command that has any of the above rules is a
+# write (it could expand into a mutating flag). Plain commands (cat, grep ...) accept them.
+# Special-cased in code: bash/sh -c, xargs, find -exec, docker/podman exec, curl, interpreters.
+readonly:
+  # --- text / files ---
+  - { cmd: cat }
+  - { cmd: tac }
+  - { cmd: head }
+  - { cmd: tail, note: "tail -f only hangs until the 60 s read timeout; it changes nothing" }
+  - { cmd: less }
+  - { cmd: more }
+  - { cmd: grep }
+  - { cmd: egrep }
+  - { cmd: fgrep }
+  - { cmd: zgrep }
+  - { cmd: zegrep }
+  - { cmd: rg }
+  - { cmd: awk, denyArgs: ["-i", "--include", "-f", "--file", "-l", "--load"], denyPattern: "system\\s*\\(|\\|\\s*getline|getline\\s*<|\\b(print|printf)\\b[^;{}]*(>|\\|)" }
+  - { cmd: gawk, denyArgs: ["-i", "--include", "-f", "--file", "-l", "--load", "inplace"], denyPattern: "system\\s*\\(|\\|\\s*getline|getline\\s*<|\\b(print|printf)\\b[^;{}]*(>|\\|)" }
+  - { cmd: mawk, denyArgs: ["-f"], denyPattern: "system\\s*\\(|\\|\\s*getline|getline\\s*<|\\b(print|printf)\\b[^;{}]*(>|\\|)" }
+  - { cmd: sed, denyArgs: ["--in-place*", "-f", "--file"], denyPattern: "(^|\\s)-[a-zA-Z]*i|(^|[/;}])\\s*[wWe](\\s|$|;)|/[0-9gpiImM]*[ew]\\b" }
+  - { cmd: cut }
+  - { cmd: sort, denyArgs: ["-o", "--output*"] }
+  - { cmd: uniq, maxPositional: 1, note: "uniq IN OUT writes OUT" }
+  - { cmd: wc }
+  - { cmd: tr }
+  - { cmd: column }
+  - { cmd: nl }
+  - { cmd: rev }
+  - { cmd: fold }
+  - { cmd: fmt }
+  - { cmd: paste }
+  - { cmd: join }
+  - { cmd: comm }
+  - { cmd: expand }
+  - { cmd: unexpand }
+  - { cmd: strings }
+  - { cmd: od }
+  - { cmd: hexdump }
+  - { cmd: hd }
+  - { cmd: xxd, denyArgs: ["-r", "-revert"] }
+  - { cmd: base64 }
+  - { cmd: base32 }
+  - { cmd: diff }
+  - { cmd: cmp }
+  - { cmd: sdiff, denyArgs: ["-o", "--output*"] }
+  - { cmd: jq }
+  - { cmd: yq, denyArgs: ["-i", "--inplace"] }
+  - { cmd: xmllint, denyArgs: ["--output", "-o"] }
+  - { cmd: xmlstarlet, denyArgs: ["-L", "--inplace"] }
+  - { cmd: zcat }
+  - { cmd: zless }
+  - { cmd: zmore }
+  - { cmd: bzcat }
+  - { cmd: xzcat }
+  - { cmd: zstdcat }
+  - { cmd: lzcat }
+  - { cmd: gzip, allowArgs: ["-c", "-dc", "-cd", "--stdout", "-l", "--list", "-t", "--test"] }
+  - { cmd: gunzip, allowArgs: ["-c", "--stdout", "-l", "--list", "-t", "--test"] }
+  - { cmd: xz, allowArgs: ["-c", "-dc", "-cd", "--stdout", "-l", "--list", "-t", "--test"] }
+  - { cmd: zstd, allowArgs: ["-c", "-dc", "-cd", "--stdout", "-l", "--list", "-t", "--test"] }
+  - { cmd: tar, allowPattern: "(^|\\s)(-?t[a-zA-Z]*|--list)(\\s|$)", denyPattern: "^-?[a-zA-Z]*[xcruA]|(^|\\s)-[a-zA-Z]*[xcruA]|--(extract|create|append|update|delete|get|concatenate|catenate)" }
+  - { cmd: unzip, allowArgs: ["-l", "-v", "-t", "-Z", "-p"] }
+  - { cmd: md5sum }
+  - { cmd: sha1sum }
+  - { cmd: sha256sum }
+  - { cmd: sha512sum }
+  - { cmd: b2sum }
+  - { cmd: cksum }
+  - { cmd: sum }
+  - { cmd: ls }
+  - { cmd: tree }
+  - { cmd: stat }
+  - { cmd: file }
+  - { cmd: readlink }
+  - { cmd: realpath }
+  - { cmd: basename }
+  - { cmd: dirname }
+  - { cmd: pwd }
+  - { cmd: cd }
+  - { cmd: pushd }
+  - { cmd: popd }
+  - { cmd: namei }
+  - { cmd: getfacl }
+  - { cmd: lsattr }
+  - { cmd: find, denyArgs: ["-delete", "-fprint", "-fprint0", "-fprintf", "-fls"], note: "-exec/-execdir/-ok are classified by their inner command" }
+  - { cmd: locate }
+  - { cmd: du }
+  - { cmd: df }
+  - { cmd: which }
+  - { cmd: whereis }
+  - { cmd: type }
+  - { cmd: tee, allowPositional: ["/dev/null", "/dev/stdout", "/dev/stderr"], denyArgs: ["-a", "--append"] }
+  # --- shell helpers ---
+  - { cmd: echo }
+  - { cmd: printf, denyArgs: ["-v"] }
+  - { cmd: "true" }
+  - { cmd: "false" }
+  - { cmd: ":" }
+  - { cmd: test }
+  - { cmd: "[" }
+  - { cmd: "[[" }
+  - { cmd: read }
+  - { cmd: sleep }
+  - { cmd: wait }
+  - { cmd: exit }
+  - { cmd: set }
+  - { cmd: seq }
+  - { cmd: yes, note: "only useful in a pipe; harmless" }
+  - { cmd: date, denyArgs: ["-s", "--set*"], denyPattern: "(^|\\s)[0-9]{8,}[0-9.]*(\\s|$)" }
+  - { cmd: env }
+  - { cmd: printenv }
+  # --- processes / system ---
+  - { cmd: ps }
+  - { cmd: pgrep }
+  - { cmd: pstree }
+  - { cmd: pidof }
+  - { cmd: pmap }
+  - { cmd: lsof }
+  - { cmd: fuser, denyPattern: "(^|\\s)-[a-zA-Z]*k|--kill|(^|\\s)-[A-Z]+\\b|--signal" }
+  - { cmd: top, requireArgs: ["re:(^|\\s)-[a-zA-Z0-9]*b"] }
+  - { cmd: iotop, requireArgs: ["re:(^|\\s)-[a-zA-Z0-9]*b"] }
+  - { cmd: free }
+  - { cmd: vmstat }
+  - { cmd: iostat }
+  - { cmd: mpstat }
+  - { cmd: pidstat }
+  - { cmd: sar, denyArgs: ["-o"] }
+  - { cmd: uptime }
+  - { cmd: uname }
+  - { cmd: hostname, noPositional: true, denyArgs: ["-F", "--file", "-b", "--boot"] }
+  - { cmd: hostnamectl, allowBare: true, allowArgs: ["status"] }
+  - { cmd: timedatectl, allowBare: true, allowArgs: ["status", "show", "list-timezones", "timesync-status", "show-timesync"] }
+  - { cmd: localectl, allowBare: true, allowArgs: ["status", "list-locales", "list-keymaps"] }
+  - { cmd: loginctl, allowBare: true, allowArgs: ["list-sessions", "list-users", "list-seats", "show-session", "show-user", "session-status", "user-status"] }
+  - { cmd: lscpu }
+  - { cmd: lsmem }
+  - { cmd: lsmod }
+  - { cmd: lspci }
+  - { cmd: lsusb }
+  - { cmd: lsblk }
+  - { cmd: lsns }
+  - { cmd: blkid }
+  - { cmd: findmnt }
+  - { cmd: mount, allowBare: true, allowArgs: ["-l"], noPositional: true }
+  - { cmd: nproc }
+  - { cmd: arch }
+  - { cmd: dmidecode }
+  - { cmd: sysctl, denyArgs: ["-w", "--write", "-p", "--load*", "--system"], denyPattern: "=" }
+  - { cmd: sestatus }
+  - { cmd: getenforce }
+  - { cmd: aa-status }
+  - { cmd: apparmor_status }
+  - { cmd: id }
+  - { cmd: groups }
+  - { cmd: whoami }
+  - { cmd: users }
+  - { cmd: who }
+  - { cmd: w }
+  - { cmd: last }
+  - { cmd: lastb }
+  - { cmd: lastlog, denyArgs: ["-C", "--clear", "-S", "--set"] }
+  - { cmd: faillog, denyArgs: ["-r", "--reset", "-l", "--lock-secs", "-m", "--maximum"] }
+  - { cmd: utmpdump }
+  - { cmd: getent }
+  - { cmd: journalctl, denyArgs: ["--vacuum-size*", "--vacuum-time*", "--vacuum-files*", "--rotate", "--flush", "--sync", "--setup-keys", "--relinquish-var", "--smart-relinquish-var", "--update-catalog"] }
+  - { cmd: dmesg, denyArgs: ["-C", "--clear", "-c", "--read-clear", "-D", "--console-off", "-E", "--console-on", "-n", "--console-level"] }
+  - { cmd: systemctl, allowBare: true, allowArgs: ["status", "is-active", "is-enabled", "is-failed", "is-system-running", "list-units", "list-unit-files", "list-timers", "list-sockets", "list-dependencies", "list-jobs", "show", "cat", "get-default", "--version"], valueFlags: ["-t", "--type", "--state", "-p", "--property", "-n", "--lines", "-o", "--output", "-H", "--host", "-M", "--machine"] }
+  - { cmd: systemd-analyze, allowArgs: ["blame", "critical-chain", "time", "verify", "security", "cat-config", "calendar", "timespan", "timestamp"] }
+  - { cmd: service, allowArgs: ["--status-all"], allowPattern: "^\\S+ status$" }
+  - { cmd: /opt/bitnami/ctlscript.sh, allowArgs: ["status"], note: "EDR-116 Bitnami stack status" }
+  - { cmd: ausearch }
+  - { cmd: aureport }
+  - { cmd: auditctl, allowArgs: ["-l", "-s", "-v", "--version"], denyArgs: ["-D", "-w", "-W", "-a", "-A", "-d", "-e", "-b", "-f", "-r", "-R", "--reset-lost"] }
+  - { cmd: crontab, allowArgs: ["-l"], denyArgs: ["-r", "-e", "-i"] }
+  - { cmd: atq }
+  - { cmd: schtasks, allowArgs: ["/query", "/Query", "/QUERY"] }
+  - { cmd: tasklist }
+  - { cmd: findstr }
+  - { cmd: systeminfo }
+  - { cmd: ipconfig, allowBare: true, allowArgs: ["/all", "/displaydns"] }
+  # --- network ---
+  - { cmd: ss }
+  - { cmd: netstat }
+  - { cmd: ip, allowArgs: ["addr", "a", "address", "route", "r", "ro", "link", "l", "neigh", "n", "neighbour", "rule", "ru", "maddr", "m", "netns", "-br", "tunnel", "tuntap", "xfrm", "monitor"], denyArgs: ["add", "del", "delete", "flush", "change", "replace", "set", "append", "prepend", "exec", "save", "restore", "attach", "detach", "-batch", "-b"] }
+  - { cmd: ping, requireArgs: ["re:(^|\\s)-[a-zA-Z]*c"], denyArgs: ["-f"] }
+  - { cmd: ping6, requireArgs: ["re:(^|\\s)-[a-zA-Z]*c"], denyArgs: ["-f"] }
+  - { cmd: traceroute }
+  - { cmd: tracepath }
+  - { cmd: dig }
+  - { cmd: nslookup }
+  - { cmd: host }
+  - { cmd: whois }
+  - { cmd: resolvectl, allowBare: true, allowArgs: ["status", "query", "statistics"] }
+  - { cmd: networkctl, allowBare: true, allowArgs: ["status", "list", "lldp", "label"] }
+  - { cmd: nmcli, allowArgs: ["general status", "device status", "device show", "dev status", "dev show", "d", "connection show", "con show", "c show"] }
+  - { cmd: iptables, allowPattern: "(^|\\s)(-[a-zA-Z]*[LS][a-zA-Z]*|--list|--list-rules)(\\s|$)", denyPattern: "(^|\\s)-[a-zA-Z]*[IADFXPNREZ]|--(insert|append|delete|flush|delete-chain|policy|new-chain|replace|rename-chain|zero)" }
+  - { cmd: ip6tables, allowPattern: "(^|\\s)(-[a-zA-Z]*[LS][a-zA-Z]*|--list|--list-rules)(\\s|$)", denyPattern: "(^|\\s)-[a-zA-Z]*[IADFXPNREZ]|--(insert|append|delete|flush|delete-chain|policy|new-chain|replace|rename-chain|zero)" }
+  - { cmd: iptables-save }
+  - { cmd: ip6tables-save }
+  - { cmd: nft, allowArgs: ["list"], denyArgs: ["add", "delete", "flush", "insert", "replace", "create", "destroy", "reset", "-f", "--file"] }
+  - { cmd: ipset, allowArgs: ["list", "-L", "save", "test"] }
+  - { cmd: conntrack, allowArgs: ["-L", "-S", "-C", "--dump", "--stats", "--count"] }
+  - { cmd: ufw, allowArgs: ["status", "show", "app"] , denyArgs: ["update", "default"] }
+  - { cmd: firewall-cmd, allowPattern: "--(list-[a-z-]+|get-[a-z-]+|query-[a-z-]+|state|info-[a-z-]+)", denyPattern: "--(add|remove|set|new|delete|reload|complete-reload|runtime-to-permanent|change|panic)" }
+  - { cmd: tailscale, allowArgs: ["status", "ip", "netcheck", "version", "ping", "whois", "dns status", "exit-node list", "--version"] }
+  - { cmd: openssl, allowArgs: ["version", "x509", "s_client", "ciphers", "verify", "crl", "asn1parse", "sess_id", "list"], denyArgs: ["-out", "-keyout", "-sess_out"] }
+  - { cmd: certbot, allowArgs: ["certificates", "--version"] }
+  # --- packages / versions ---
+  - { cmd: dpkg, allowPattern: "(^|\\s)(-l|-s|-L|-S|-p|-V|-C|--list|--status|--listfiles|--search|--print-avail|--verify|--get-selections|--print-architecture|--audit|--version|--compare-versions)(\\s|$)", denyArgs: ["-i", "--install", "-r", "--remove", "-P", "--purge", "--configure", "--unpack", "--set-selections", "-x", "--extract", "-X", "--vextract", "--clear-avail", "--update-avail", "--merge-avail", "--add-architecture", "--remove-architecture"] }
+  - { cmd: dpkg-query }
+  - { cmd: apt, allowArgs: ["list", "show", "policy", "search", "depends", "rdepends", "showsrc", "update", "--version"], note: "apt update only refreshes the package lists" }
+  - { cmd: apt-get, allowArgs: ["update", "-s", "--simulate", "--dry-run", "--just-print", "--no-act", "check", "--version"], denyArgs: ["-y", "--yes", "--assume-yes"] }
+  - { cmd: apt-cache }
+  - { cmd: apt-mark, allowArgs: ["showhold", "showauto", "showmanual", "showinstall", "showremove", "showpurge"] }
+  - { cmd: rpm, allowPattern: "(^|\\s)(-q[a-zA-Z]*|-V[a-zA-Z]*|--query|--verify|--version|--querytags|--showrc|--eval|-E)(\\s|$)", denyArgs: ["-e", "--erase", "-i", "--install", "-U", "--upgrade", "-F", "--freshen", "--import", "--rebuilddb", "--initdb", "--setperms", "--setugids", "--restore", "--delsign", "--addsign", "--resign"] }
+  - { cmd: dnf, allowArgs: ["list", "info", "check-update", "updateinfo", "repolist", "repoquery", "search", "provides", "whatprovides", "history", "deplist", "repoinfo", "--version", "makecache", "check", "list-security", "advisory", "check-release-update", "changelog"], denyArgs: ["undo", "redo", "rollback", "-y", "--assumeyes"], valueFlags: ["--repo", "--repoid", "--enablerepo", "--disablerepo", "--setopt", "-x", "--exclude", "--releasever", "--installroot"] }
+  - { cmd: yum, allowArgs: ["list", "info", "check-update", "updateinfo", "repolist", "search", "provides", "whatprovides", "history", "deplist", "--version", "makecache"], denyArgs: ["undo", "redo", "rollback", "-y", "--assumeyes"], valueFlags: ["--enablerepo", "--disablerepo", "--setopt", "-x", "--exclude", "--releasever", "--installroot"] }
+  - { cmd: repoquery }
+  - { cmd: needs-restarting, denyArgs: ["-s"] , note: "list only" }
+  - { cmd: needrestart, requireArgs: ["-b", "re:(^|\\s)-r\\s+l"], denyPattern: "(^|\\s)-r\\s+[ai]" }
+  - { cmd: snap, allowArgs: ["list", "info", "version", "changes", "services", "connections", "refresh --list"] }
+  - { cmd: flatpak, allowArgs: ["list", "info"] }
+  - { cmd: pip, allowArgs: ["list", "show", "freeze", "check", "--version", "-V", "index", "inspect"] }
+  - { cmd: pip3, allowArgs: ["list", "show", "freeze", "check", "--version", "-V", "index", "inspect"] }
+  - { cmd: npm, allowArgs: ["list", "ls", "ll", "la", "view", "info", "show", "v", "outdated", "audit", "explain", "why", "query", "prefix", "root", "-v", "--version", "config list", "config get", "get"], denyArgs: ["fix", "--fix", "set", "delete", "edit", "--force"] }
+  - { cmd: gem, allowArgs: ["list", "info", "-v", "--version", "environment", "outdated", "contents", "specification", "query"] }
+  - { cmd: composer, allowArgs: ["show", "--version", "-V", "outdated", "licenses", "audit", "info", "depends", "why", "prohibits", "why-not"] }
+  - { cmd: java, allowArgs: ["-version", "--version", "-XshowSettings:properties"] }
+  - { cmd: go, allowArgs: ["version", "env"] }
+  - { cmd: haraka, allowArgs: ["-v", "--version", "-h", "--help"] }
+  - { cmd: nginx, allowArgs: ["-t", "-T", "-v", "-V"], denyArgs: ["-s"] }
+  - { cmd: apache2ctl, allowArgs: ["-t", "-S", "-M", "-v", "-V", "configtest", "-T"] }
+  - { cmd: apachectl, allowArgs: ["-t", "-S", "-M", "-v", "-V", "configtest", "-T"] }
+  - { cmd: httpd, allowArgs: ["-t", "-S", "-M", "-v", "-V", "-T"] }
+  - { cmd: sshd, allowArgs: ["-t", "-T", "-G", "-V"] }
+  - { cmd: visudo, allowArgs: ["-c", "--check"] }
+  - { cmd: named-checkconf }
+  - { cmd: named-checkzone }
+  - { cmd: haproxy, allowArgs: ["-c", "-v", "-vv"] }
+  - { cmd: postconf, denyPattern: "=|(^|\\s)-[a-zA-Z]*[eXM#P]" }
+  - { cmd: postqueue, allowArgs: ["-p", "-j"] }
+  - { cmd: mailq }
+  - { cmd: php-fpm, allowArgs: ["-t", "-v", "-i", "-m", "--test", "--version"] }
+  - { cmd: fail2ban-client, allowArgs: ["status", "get", "version", "ping", "banned", "-d", "--dp", "--dump-pretty", "-t", "--test"] }
+  - { cmd: fail2ban-regex }
+  # --- containers ---
+  - { cmd: docker, allowArgs: ["ps", "logs", "inspect", "images", "image ls", "image inspect", "image history", "history", "stats", "version", "info", "top", "port", "diff", "container ls", "container inspect", "container logs", "container top", "container port", "container diff", "container stats", "network ls", "network inspect", "volume ls", "volume inspect", "system df", "system info", "context ls", "compose ps", "compose logs", "compose config", "compose ls", "compose top", "compose images", "compose version", "-v", "--version"], valueFlags: ["-H", "--host", "--context", "-c", "--config", "-l", "--log-level"] }
+  - { cmd: podman, allowArgs: ["ps", "logs", "inspect", "images", "image ls", "image inspect", "image history", "history", "stats", "version", "info", "top", "port", "diff", "container ls", "container inspect", "container logs", "container top", "container port", "container diff", "network ls", "network inspect", "volume ls", "volume inspect", "system df", "system info", "pod ps", "pod ls", "pod inspect", "-v", "--version"] }
+  - { cmd: crictl, allowArgs: ["ps", "pods", "images", "logs", "inspect", "inspectp", "inspecti", "stats", "info", "version"] }
+  - { cmd: kubectl, allowArgs: ["get", "describe", "logs", "top", "version", "api-resources", "api-versions", "explain", "cluster-info", "events", "auth can-i", "config view", "config get-contexts", "config current-context"], valueFlags: ["-n", "--namespace", "--context", "-l", "--selector", "-o", "--output", "-c", "--container", "--kubeconfig", "--cluster", "--user"] }
+  # --- Wazuh ---
+  - { cmd: wazuh-logtest }
+  - { cmd: wazuh-analysisd, allowArgs: ["-t", "-tv", "-V"], note: "-t only tests the configuration and rules" }
+  - { cmd: wazuh-control, allowArgs: ["status", "info"] }
+  - { cmd: agent_control, allowArgs: ["-l", "-i", "-lc", "-ln", "-ls", "-s", "-L", "-j"], denyArgs: ["-R", "-r", "-b", "-f", "-u", "-a"] }
+  - { cmd: agent_groups, allowArgs: ["-l", "-s", "-S"], denyArgs: ["-a", "-r", "-R", "-c"] }
+  - { cmd: manage_agents, allowArgs: ["-l"], denyArgs: ["-a", "-r", "-e", "-i", "-f", "-n", "-d"] }
+  - { cmd: cluster_control, allowArgs: ["-l", "-i", "-a"] }
+  - { cmd: verify-agent-conf }
+unknown_if_contains:
+  - "eval "
+  - "source "
+# EDR-89: secret files. Any command mentioning one needs approval, so a hijacked (prompt-injected) agent cannot
+# read a key and send it out through an allowed read command. Regexes, case-insensitive, matched on the whole command.
+sensitive_paths:
+  - "/\\.ssh/(id_[a-z0-9_]+|authorized_keys|known_hosts)?(\\b|$)"
+  - "/etc/g?shadow\\b"
+  - "/etc/sudoers"
+  - "wazuh-passwords\\.txt|wazuh-install-files"
+  - "/var/ossec/etc/(client\\.keys|authd\\.pass|sslmanager\\.key)"
+  - "/opt/edr-console/(\\.env|secrets)|/opt/mamorai/(\\.env|secrets)"
+  - "(^|[\\s/'\"=])\\.env(\\.[a-z]+)?(\\s|$|['\"])"
+  - "/etc/ssl/private|privkey[\\w.-]*\\.pem|\\.key(\\s|$|['\"])"
+  - "/\\.aws/credentials|/\\.kube/config|/\\.docker/config\\.json|\\.git-credentials|/\\.netrc|/\\.pgpass"
+  - "/proc/[^/\\s]+/environ"
+  - "/var/lib/docker/volumes/[^\\s]*edr-console-data|edr-console\\.db"
+  - "(docker|podman) +(inspect|exec)[^|;&]*\\b(edr-console|mamorai)\\b"
+  - "/etc/indexer/certs|/etc/wazuh-indexer/certs|/etc/wazuh-dashboard/certs"
+# EDR-89: external hosts curl may reach without approval (loopback / private / tailnet are always allowed)
+egress_allow:
+  - endoflife.date
+  - nodejs.org
+  - "*.nodejs.org"
+  - packages.wazuh.com
+  - cti.wazuh.com
+

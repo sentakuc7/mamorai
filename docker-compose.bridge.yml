@@ -1,0 +1,24 @@
+services:
+  edr-console:
+    image: hjkworld/edr-console:0.1.0
+    build: .
+    container_name: edr-console
+    restart: unless-stopped
+    ports:
+      - "8444:8444"
+    env_file: .env
+    volumes:
+      - edr-console-data:/app/data
+      - ./secrets:/app/secrets:ro
+      # EDR-130: signed Windows add-on (installer/windows/build-addon.sh --out ./addon); goes into the Windows agent pack
+      - ./addon:/app/addon:ro
+      # EDR-149: requests to the root helper on the host (installer/modules/62-host-bridge.sh), e.g. join the tailnet
+      - /var/lib/mamorai/host-bridge:/app/host-bridge
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  edr-console-data:

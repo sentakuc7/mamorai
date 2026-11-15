@@ -1,0 +1,45 @@
+{
+  "name": "Wazuh 共通の調べ方（同梱）",
+  "replaces": ["Wazuh general (builtin)"],
+  "meta": {
+    "purpose": "Wazuh のアラート・アーカイブを調べるときの共通知識。どの環境でも使える前提と、よくある誤検知のパターン。",
+    "targets": [],
+    "environment": "mixed",
+    "record_to": "",
+    "tags": ["共通", "wazuh"],
+    "facts": [
+      "`wazuh-alerts-*` にはルールに一致したイベントだけが入る。`wazuh-archives-*`（有効時）には一致しなかった Sysmon テレメトリも含めた全イベントが入る。プロセスツリーや「この時刻の前後で何があったか」は archives を使う。",
+      "レベルの意味: 0〜6 低、7〜11 中、12〜14 高、15 以上 緊急。",
+      "よく使うフィールド: `rule.id` `rule.level` `rule.description` `rule.groups` `rule.mitre.id` `agent.id/name/ip` `data.srcip` `data.srcuser` `data.win.system.eventID` `data.win.eventdata.{image,commandLine,parentImage,parentCommandLine,user,processGuid,parentProcessGuid,targetFilename,destinationIp,destinationPort,queryName,targetObject,hashes}` `full_log`。",
+      "Sysmon イベント ID: 1 プロセス起動 / 3 ネットワーク接続 / 5 プロセス終了 / 7 イメージロード / 8 CreateRemoteThread / 10 プロセスアクセス / 11 ファイル作成 / 12・13・14 レジストリ / 15 ADS / 22 DNS 問い合わせ / 23 ファイル削除。",
+      "よくある正常動作: `services.exe` から標準パスで起動した `backgroundTaskHost.exe` `taskhostw.exe` `smss.exe` `svchost.exe`（Microsoft 署名）は通常の Windows 動作。パスや親が異常でなければ「Suspicious Process」系ルールは誤検知のことが多い。",
+      "インストーラーや更新プログラムが `%TEMP%` に EXE/DLL を置く（ルール 92213）のはよくあるノイズ。親（msiexec、setup.exe、Edge/Chrome の更新）と署名の有無を確認してから判断する。",
+      "PowerShell の `__PSScriptPolicyTest_*.ps1` が Temp にできるのは正常。",
+      "Linux の SSH ブルートフォースは `sshd` ルール 5710/5716/5720。fail2ban のログを取り込んでいるホストでは BAN がカスタムルール 1003xx として見える。",
+      "Web 攻撃は Apache アクセスログのルール 311xx とカスタム 1004xx。404 より、探索に対して 200 を返しているかどうかが重要。"
+    ],
+    "prohibitions": [
+      "BAN を提案する前に、その IP が既知の正規クライアント・tailnet/LAN 帯・Cloudflare エッジでないことを必ず確認する。",
+      "恒久ブロックより TTL 付きのブロックを優先し、戻し方を必ず書く。"
+    ],
+    "procedures": [
+      { "title": "indexer への問い合わせ方", "steps": [
+        "必ず時間で絞る（`timestamp` の `range`、例: `now-24h`）。1 台の話なら `agent.id` か `agent.name` でも絞る。",
+        "サンプルを取る前に `size: 0` + `aggs`（`rule.id` `agent.name` `data.srcip` `data.win.eventdata.image` の terms）で分布を見る。",
+        "必要な件数だけサンプルを取り、`_source` を絞って読む。"
+      ] },
+      { "title": "プロセスの連鎖をたどる", "steps": [
+        "怪しいプロセスの EID1 を取り、その `parentProcessGuid` から親の EID1 を取る（必要なだけ繰り返す）。",
+        "子プロセス = `parentProcessGuid` がこの guid の EID1。",
+        "活動 = 同じ `processGuid` の EID 3/11/13/22（通信・ファイル・レジストリ・DNS）。process_tree ツールが同じことを一度にやる。"
+      ] },
+      { "title": "Linux の攻撃を数える", "steps": [
+        "`data.srcip` のユニーク数と /24 単位の数を両方見る。分散攻撃は IP ごとのしきい値の下に隠れる。",
+        "同じ IP が他のホストにも来ていないか横断で確認する。"
+      ] }
+    ],
+    "fixes": [],
+    "precedents": [],
+    "extra": []
+  }
+}

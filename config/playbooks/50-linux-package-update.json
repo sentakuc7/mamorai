@@ -1,0 +1,92 @@
+{
+  "name": "Linux のパッケージ更新・脆弱性修正（同梱）",
+  "replaces": [],
+  "meta": {
+    "purpose": "Linux ホストで脆弱性の修正版を入れるときの共通手順。修正版の確かめ方、OS ごとの「更新が見えない」落とし穴、時間のかかる処理の扱い、作業後の点検。ラボでの PHP の脆弱性修正（Amazon Linux 2023）の実績から作成。",
+    "targets": [],
+    "environment": "mixed",
+    "record_to": "",
+    "tags": [
+      "共通",
+      "パッケージ",
+      "脆弱性",
+      "AL2023",
+      "dnf",
+      "apt"
+    ],
+    "facts": [
+      "修正版は公式の告知（例: php.net の Security advisory の Fixed in）か version_check の結果で決める。モデルの記憶にある版番号は使わない。",
+      "版番号の比較は数字どおり。8.3.15 は 8.3.33 より古い。「ディストリと公式で番号体系が違う」ことはない（違うのはリリース番号 -1.amzn2023.0.x の部分だけ）。",
+      "Amazon Linux 2023 は OS のリリース番号（例: 2023.12.20260918）が固定されている。`dnf check-update` / `dnf upgrade` は今のリリースの中しか見ないので、新しいリリースに修正版が入っていても「更新なし」と出る。",
+      "AL2023 で修正版が出ているかは pkg_candidates ツールで確かめる（中身は `dnf check-release-update` と `dnf --releasever=latest repoquery <pkg>`）。",
+      "AL2023 で修正版が新しいリリースにある場合の正しい直し方は `dnf upgrade --releasever=<そのリリース>`（OS 全体が更新される。カーネルが入れ替わるので再起動はメンテ枠で）。",
+      "Debian / Ubuntu は `apt-get update` のあと `apt-cache policy <pkg>` で候補版を見る。セキュリティ修正は版番号の末尾（+deb12u3 等）で入るので、上流の版番号が変わらなくても修正済みのことがある（changelog で CVE 番号を確認する）。",
+      "RAM 1GB 未満のホスト（Lightsail 最小構成など）では dnf のリリース更新が 20 分以上かかる（selinux-policy の再構築でメモリを使い、スワップする）。処理が遅いのは止まっているのではない。",
+      "dnf / rpm / apt / dpkg の処理を途中で止めると、パッケージ管理の台帳に同じパッケージの二重登録が残り（dnf check で duplicate）、ライブラリの不整合（undefined symbol）が起きる。"
+    ],
+    "prohibitions": [
+      "dnf / yum / rpm / apt / dpkg のプロセスを kill しない。ロックファイル（/var/lib/rpm/.rpm.lock、/var/lib/dpkg/lock*）を消さない。処理中なら終わるまで待つ。",
+      "本番ホストでソースからビルドして差し替えない（gcc / make install / ./configure）。パッケージ管理の外に出て、以後の更新で管理できなくなる。",
+      "EPEL / Remi などの外部リポジトリを Amazon Linux 2023 に入れない（AL2023 は RHEL 互換ではなく、依存が壊れる）。",
+      "今入っている版より古い版を「修正版」として入れない。",
+      "「リポジトリに更新がない」を、修正版がまだ出ていない証拠にしない（AL2023 のリリース固定、EOL の系列は更新が止まる）。"
+    ],
+    "procedures": [
+      {
+        "title": "脆弱性の修正版を入れる（共通）",
+        "steps": [
+          "入っている版を読み取りで確かめる（rpm -q / dpkg -l / <product> -v）。",
+          "version_check で修正版（その系列の最新）を確かめる。人が告知の URL をくれたら、その Fixed in を正とする。",
+          "pkg_candidates でホストが入れられる版を確かめる。結論（今のリリースで入る / リリース更新が必要 / まだ出ていない）をそのまま使う。",
+          "計画（apply_change）を 1 つにまとめる: 事前の設定退避 → 更新（long: true） → 設定テスト（php-fpm -t / apachectl configtest） → サービス再起動 → 動作確認（HTTP 応答・版）。",
+          "クラウド VM なら更新の前に cloud_snapshot を取る。",
+          "作業後の点検結果（post_check）を確認してから完了を報告する。カーネルが更新されたら再起動の要否を人に伝える。"
+        ]
+      },
+      {
+        "title": "修正版がまだ出ていないとき",
+        "steps": [
+          "告知に書かれた緩和策（設定変更）があれば、それを計画として提案する。",
+          "schedule_task で 1 日ごとに pkg_candidates を実行する確認を登録する。達成条件は「修正版が pkg_candidates の available に現れた」。"
+        ]
+      }
+    ],
+    "fixes": [
+      {
+        "title": "途中で止まった dnf の後始末（二重登録の解消）",
+        "when": "dnf check に「is a duplicate with」が出る。kill された更新の後に残る。",
+        "commands": [
+          "cp -a /var/lib/rpm /root/rpmdb-backup-$(date +%Y%m%d%H%M)",
+          "dnf upgrade --releasever=<途中だったリリース> -y   # まず止まった更新を最後までやり直す（long: true）",
+          "dnf check --duplicates 2>&1 | awk '/is a duplicate with/{print $1}' > /root/old-dups.txt",
+          "[ -s /root/old-dups.txt ] && rpm -e --justdb --nodeps --noscripts --notriggers $(cat /root/old-dups.txt)",
+          "dnf check"
+        ],
+        "rollback": [
+          "rm -rf /var/lib/rpm && cp -a /root/rpmdb-backup-<時刻> /var/lib/rpm"
+        ],
+        "approval": "always",
+        "note": "--justdb は台帳から古い方の記録だけを消す（新しい版のファイルはそのまま）。dnf remove --duplicates は systemd などの保護パッケージで失敗する。"
+      },
+      {
+        "title": "ビルドのために入れたツールを片付ける",
+        "when": "gcc / make / *-devel が本番に入っている（dnf history に install gcc ... がある）",
+        "commands": [
+          "dnf history list | grep -E 'install.*(gcc|make|-devel)'",
+          "dnf history undo <ID> -y"
+        ],
+        "rollback": [],
+        "approval": "always",
+        "note": "undo できないときは同じパッケージ名で dnf remove（依存は自動で片付く）。"
+      }
+    ],
+    "precedents": [
+      {
+        "date": "2026-10-24",
+        "summary": "ラボの Web サーバー（AL2023）の PHP 脆弱性修正: dnf check-update で更新なし → 8.3.15 のソースビルドを試みて失敗、dnf を kill して台帳が壊れた。正解は 2023.12.20261021 へのリリース更新で php8.3 8.3.36。",
+        "ref": ""
+      }
+    ],
+    "extra": []
+  }
+}

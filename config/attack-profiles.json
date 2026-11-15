@@ -1,0 +1,52 @@
+{
+  "_doc": "攻撃ソース定義（Attack Source Profile）。どのアラートを『外部からの攻撃通信』として数え、送信元・宛先をどのフィールドから取るかを宣言する。EDR-70 §4.1。builtin:true は stock Wazuh ルールだけで動くもの。",
+  "profiles": [
+    {
+      "id": "sshd-bruteforce", "name": "SSH 総当たり", "kind": "ssh", "color": "#f43f5e", "builtin": true,
+      "match": { "any_groups": ["sshd", "authentication_failed", "invalid_login", "authentication_failures"], "all_groups": ["sshd"], "min_level": 5 },
+      "src_fields": ["data.real_ip", "data.srcip"], "dst_field": "agent.name",
+      "what_ja": "SSH へのログイン試行（存在しないユーザー・パスワード誤り）"
+    },
+    {
+      "id": "web-scan", "name": "Web スキャン・探索", "kind": "web", "color": "#fb923c", "builtin": true,
+      "match": { "any_groups": ["web", "accesslog", "web_scan", "recon", "appsec", "attack"], "min_level": 5, "exclude_groups": ["sshd"] },
+      "src_fields": ["data.real_ip", "data.cf_connecting_ip", "data.srcip"], "dst_field": "agent.name",
+      "what_ja": "Web サーバーへの脆弱性スキャン・秘密ファイル探索・不審な要求"
+    },
+    {
+      "id": "vpn-auth", "name": "VPN 認証失敗", "kind": "vpn", "color": "#facc15", "builtin": true,
+      "match": { "any_groups": ["sophos", "sophos_xg", "openvpn", "fortigate", "vpn"], "any_rule_ids": ["100610", "100611", "100612"], "min_level": 3 },
+      "src_fields": ["data.src_ip", "data.srcip"], "dst_field": "agent.name",
+      "what_ja": "VPN ポータル / VPN 接続の認証失敗"
+    },
+    {
+      "id": "smtp-auth", "name": "SMTP 認証失敗", "kind": "smtp", "color": "#facc15", "builtin": true,
+      "match": { "any_groups": ["postfix", "dovecot", "smtp", "haraka", "mail"], "min_level": 3 },
+      "src_fields": ["data.srcip", "data.src_ip"], "dst_field": "agent.name",
+      "what_ja": "メールサーバーへの認証失敗・不正な送信試行"
+    },
+    {
+      "id": "rdp-bruteforce", "name": "RDP / Windows ログオン失敗", "kind": "rdp", "color": "#f43f5e", "builtin": true,
+      "match": { "any_rule_ids": ["60122", "60204", "92657"], "any_groups": ["windows_security_fail", "win_authentication_failed"], "min_level": 5 },
+      "src_fields": ["data.win.eventdata.ipAddress", "data.srcip"], "dst_field": "agent.name",
+      "what_ja": "Windows へのログオン失敗（RDP 等）"
+    },
+    {
+      "id": "fw-drop", "name": "FW 拒否", "kind": "fw", "color": "#a78bfa", "builtin": true,
+      "match": { "any_groups": ["firewall_drop", "firewall", "iptables", "pf"], "any_rule_ids": ["100600", "100601"], "min_level": 3 },
+      "src_fields": ["data.src_ip", "data.srcip"], "dst_field": "agent.name",
+      "what_ja": "ファイアウォールが拒否した通信"
+    },
+    {
+      "id": "blocked", "name": "遮断済み", "kind": "blocked", "color": "#2dd4bf", "builtin": true, "role": "block",
+      "match": { "any_groups": ["fail2ban"], "any_rule_ids": ["100302", "100710", "100711"], "exclude_rule_ids": ["100303"] },
+      "src_fields": ["data.srcip", "data.ip"], "dst_field": "agent.name",
+      "what_ja": "fail2ban / FW が送信元を遮断"
+    }
+  ],
+  "cdn_ranges": {
+    "_doc": "CDN エッジのレンジ。ここからの通信は『真の送信元不明（CDN 経由）』として地図から除外する。Cloudflare IPv4 (https://www.cloudflare.com/ips-v4)",
+    "cloudflare": ["173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22", "141.101.64.0/18", "108.162.192.0/18", "190.93.240.0/20", "188.114.96.0/20", "197.234.240.0/22", "198.41.128.0/17", "162.158.0.0/15", "104.16.0.0/13", "104.24.0.0/14", "172.64.0.0/13", "131.0.72.0/22"]
+  },
+  "private_ranges": ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8", "100.64.0.0/10", "169.254.0.0/16", "::1/128", "fc00::/7", "fe80::/10"]
+}

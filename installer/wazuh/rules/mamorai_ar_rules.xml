@@ -1,0 +1,51 @@
+<!-- EDR-121: results reported by the MamorAI active-response add-on on Windows endpoints (IDs 100750-100759). -->
+<group name="mamorai,mamorai_ar,">
+
+  <rule id="100750" level="3">
+    <decoded_as>mamorai-ar</decoded_as>
+    <field name="mamorai_ar.id" type="pcre2">.</field>
+    <description>MamorAI add-on: $(mamorai_ar.op) on this endpoint (ok=$(mamorai_ar.ok))</description>
+  </rule>
+
+  <rule id="100751" level="10">
+    <if_sid>100750</if_sid>
+    <field name="mamorai_ar.ok" type="pcre2">^false$</field>
+    <description>MamorAI add-on: $(mamorai_ar.op) FAILED on this endpoint: $(mamorai_ar.detail)</description>
+  </rule>
+
+  <rule id="100752" level="12">
+    <if_sid>100750</if_sid>
+    <field name="mamorai_ar.op" type="pcre2">^isolate$</field>
+    <field name="mamorai_ar.ok" type="pcre2">^true$</field>
+    <description>MamorAI add-on: endpoint ISOLATED (only the Wazuh manager is reachable)</description>
+  </rule>
+
+  <!-- EDR-168: Windows Update / winget / reboot -->
+  <rule id="100754" level="3">
+    <if_sid>100750</if_sid>
+    <field name="mamorai_ar.op" type="pcre2">^update-(scan|install)$</field>
+    <field name="mamorai_ar.ok" type="pcre2">^true$</field>
+    <description>MamorAI add-on: $(mamorai_ar.op) $(mamorai_ar.phase): $(mamorai_ar.detail)</description>
+  </rule>
+
+  <rule id="100755" level="5">
+    <if_sid>100754</if_sid>
+    <field name="mamorai_ar.op" type="pcre2">^update-install$</field>
+    <field name="mamorai_ar.phase" type="pcre2">^done$</field>
+    <description>MamorAI add-on: updates installed on this endpoint ($(mamorai_ar.detail))</description>
+  </rule>
+
+  <rule id="100756" level="5">
+    <if_sid>100750</if_sid>
+    <field name="mamorai_ar.op" type="pcre2">^reboot(-cancel)?$</field>
+    <field name="mamorai_ar.ok" type="pcre2">^true$</field>
+    <description>MamorAI add-on: $(mamorai_ar.op): $(mamorai_ar.detail)</description>
+  </rule>
+
+  <rule id="100753" level="3">
+    <if_sid>100750</if_sid>
+    <field name="mamorai_ar.op" type="pcre2">^version$</field>
+    <description>MamorAI add-on: version $(mamorai_ar.version)</description>
+  </rule>
+
+</group>

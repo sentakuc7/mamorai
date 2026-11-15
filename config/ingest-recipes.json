@@ -1,0 +1,64 @@
+{
+  "_doc": "攻撃可視化セットアップ・ウィザード（EDR-74）のレシピ。資産の種類ごとに『Wazuh に攻撃ログを運ぶために必要な作業』を宣言する。{{MANAGER}} は Wazuh manager のアドレス、{{AGENT_NAME}} はホスト名に置換される。",
+  "assets": [
+    {
+      "id": "web", "label": "公開している Web サーバー", "icon": "🌐", "profiles": ["web-scan"],
+      "desc": "nginx / Apache のアクセスログから、脆弱性スキャンや秘密ファイル探索（/.env など）を検出します。",
+      "steps": [
+        { "id": "agent", "kind": "agent_install", "title": "Wazuh エージェントを入れる", "detail": "サーバー上で実行します。manager への 1514/1515 が通る必要があります（クラウドのサーバーなら Tailscale 等の VPN か、manager 側のポート公開）。", "check": "agent_present" },
+        { "id": "localfile", "kind": "agent_localfile", "title": "アクセスログを監視対象に追加", "detail": "エージェントの ossec.conf に <localfile> を追加して再起動します。既定ではアクセスログは監視されていないことが多いです。", "check": "profile:web-scan",
+          "snippet": "<ossec_config>\n  <!-- nginx -->\n  <localfile>\n    <log_format>syslog</log_format>\n    <location>/var/log/nginx/access.log</location>\n  </localfile>\n  <!-- Apache -->\n  <localfile>\n    <log_format>apache</log_format>\n    <location>/var/log/apache2/access.log</location>\n  </localfile>\n  <localfile>\n    <log_format>apache</log_format>\n    <location>/var/log/httpd/access_log</location>\n  </localfile>\n</ossec_config>",
+          "snippet_path": "/var/ossec/etc/ossec.conf（エージェント側）", "restart": "sudo systemctl restart wazuh-agent" },
+        { "id": "realip", "kind": "info", "title": "CDN（Cloudflare 等）を使っているなら真の送信元を記録", "detail": "CDN 越しだとログの送信元が CDN のエッジ IP になり、国が全部『米国』になります。nginx なら http ブロックに以下を入れます。", "snippet": "set_real_ip_from 173.245.48.0/20;\nset_real_ip_from 103.21.244.0/22;\nset_real_ip_from 103.22.200.0/22;\nset_real_ip_from 103.31.4.0/22;\nset_real_ip_from 141.101.64.0/18;\nset_real_ip_from 108.162.192.0/18;\nset_real_ip_from 190.93.240.0/20;\nset_real_ip_from 188.114.96.0/20;\nset_real_ip_from 197.234.240.0/22;\nset_real_ip_from 198.41.128.0/17;\nset_real_ip_from 162.158.0.0/15;\nset_real_ip_from 104.16.0.0/13;\nset_real_ip_from 104.24.0.0/14;\nset_real_ip_from 172.64.0.0/13;\nset_real_ip_from 131.0.72.0/22;\nreal_ip_header CF-Connecting-IP;", "snippet_path": "/etc/nginx/conf.d/realip.conf", "restart": "sudo nginx -t && sudo systemctl reload nginx", "optional": true }
+      ]
+    },
+    {
+      "id": "ssh", "label": "SSH を公開しているサーバー", "icon": "🔑", "profiles": ["sshd-bruteforce", "blocked"],
+      "desc": "sshd の認証ログから総当たりを検出します。標準の Wazuh ルール（5710 系）で動くので、エージェントを入れるだけで描けます。",
+      "steps": [
+        { "id": "agent", "kind": "agent_install", "title": "Wazuh エージェントを入れる", "detail": "/var/log/auth.log（Debian/Ubuntu）/ /var/log/secure（RHEL 系）は既定で監視されます。journald のみの環境では <localfile><log_format>journald</log_format> を追加してください。", "check": "agent_present" },
+        { "id": "fail2ban", "kind": "info", "title": "（任意）fail2ban を入れて『遮断済み』も描く", "detail": "fail2ban の BAN ログを Wazuh に送ると、攻撃が遮断されたことが青緑で描かれます。EDR Console のアクティブディフェンス（EDR-20）と同じ仕組みです。", "snippet": "<localfile>\n  <log_format>syslog</log_format>\n  <location>/var/log/fail2ban.log</location>\n</localfile>", "snippet_path": "/var/ossec/etc/ossec.conf（エージェント側）", "restart": "sudo systemctl restart wazuh-agent", "optional": true }
+      ]
+    },
+    {
+      "id": "vpn_fw", "label": "VPN・ファイアウォール機器", "icon": "🧱", "profiles": ["vpn-auth", "fw-drop"],
+      "desc": "機器にはエージェントが入らないので、syslog を Wazuh manager に送ります。manager 側で受信設定と、機器ごとのデコーダ/ルールが必要です。",
+      "vendors": ["sophos_xg", "fortigate", "pfsense", "opnsense", "openwrt", "yamaha_rtx", "other"],
+      "steps": [
+        { "id": "remote", "kind": "manager_remote", "title": "manager で syslog を受信する", "detail": "manager の ossec.conf に <remote> を追加して再起動します（UDP 514。機器の IP だけ許可）。EDR Console に manager がホスト登録されていれば AI が承認付きで適用できます。", "check": "manager_remote",
+          "snippet": "<ossec_config>\n  <remote>\n    <connection>syslog</connection>\n    <port>514</port>\n    <protocol>udp</protocol>\n    <allowed-ips>{{DEVICE_IP}}</allowed-ips>\n  </remote>\n</ossec_config>", "snippet_path": "/var/ossec/etc/ossec.conf（manager 側）", "restart": "sudo systemctl restart wazuh-manager" },
+        { "id": "device", "kind": "syslog_device", "title": "機器から syslog を送る", "detail": "機器の管理画面で、syslog サーバー = {{MANAGER}}:514/UDP、送る内容 = ファイアウォール拒否・認証失敗・VPN ログ、を設定します。" },
+        { "id": "decoders", "kind": "decoder_pack", "title": "デコーダ / ルールを manager に入れる", "detail": "Fortigate / pfSense / OPNsense は Wazuh 標準ルールで動きます。Sophos XG / OpenWrt（iptables, nftables）/ Yamaha RTX は EDR Console 同梱のデコーダ・ルール（100650〜100699）を manager に入れます。", "check": "profile:fw-drop" }
+      ]
+    },
+    {
+      "id": "mail", "label": "メールサーバー", "icon": "✉️", "profiles": ["smtp-auth"],
+      "desc": "Postfix / Dovecot / Haraka の認証失敗ログから、メールサーバーへの総当たりを検出します。",
+      "steps": [
+        { "id": "agent", "kind": "agent_install", "title": "Wazuh エージェントを入れる", "check": "agent_present" },
+        { "id": "localfile", "kind": "agent_localfile", "title": "メールログを監視対象に追加", "snippet": "<localfile>\n  <log_format>syslog</log_format>\n  <location>/var/log/mail.log</location>\n</localfile>", "snippet_path": "/var/ossec/etc/ossec.conf（エージェント側）", "restart": "sudo systemctl restart wazuh-agent", "check": "profile:smtp-auth" }
+      ]
+    },
+    {
+      "id": "home_router", "label": "公開しているものは無い（自宅のルーターだけ）", "icon": "🏠", "profiles": ["fw-drop"],
+      "desc": "家庭用ルーターでも、外から来た通信を拒否したログ（WAN 側の拒否）を syslog で送れば、どの国から叩かれているかが描けます。",
+      "vendors": ["yamaha_rtx", "nec_ix", "openwrt", "buffalo", "other"],
+      "steps": [
+        { "id": "remote", "kind": "manager_remote", "title": "manager で syslog を受信する", "snippet": "<ossec_config>\n  <remote>\n    <connection>syslog</connection>\n    <port>514</port>\n    <protocol>udp</protocol>\n    <allowed-ips>{{DEVICE_IP}}</allowed-ips>\n  </remote>\n</ossec_config>", "snippet_path": "/var/ossec/etc/ossec.conf（manager 側）", "restart": "sudo systemctl restart wazuh-manager", "check": "manager_remote" },
+        { "id": "device", "kind": "syslog_device", "title": "ルーターから syslog を送る", "detail": "ルーターの設定で syslog の送り先を {{MANAGER}} にし、フィルタ（拒否）ログを有効にします。" },
+        { "id": "decoders", "kind": "decoder_pack", "title": "デコーダ / ルールを manager に入れる", "detail": "EDR Console 同梱のルーター用デコーダ・ルール（100650〜100699）を manager に入れます。", "check": "profile:fw-drop" }
+      ]
+    }
+  ],
+  "vendors": {
+    "sophos_xg": { "label": "Sophos XG / Sophos Firewall", "stock": false, "howto": "SYSTEM › Administration › Notification settings › Syslog servers で追加。Log settings で『Firewall rule: Denied / Invalid traffic』『Authentication』『VPN』を有効化。EDR-58 で実績あり。" },
+    "fortigate": { "label": "Fortinet FortiGate", "stock": true, "howto": "config log syslogd setting → set status enable / set server {{MANAGER}} / set port 514 / set facility local7 / end。Wazuh 標準ルール 81600 系で解析されます。" },
+    "pfsense": { "label": "pfSense", "stock": true, "howto": "Status › System Logs › Settings › Remote Logging: Remote log servers = {{MANAGER}}:514、Firewall Events にチェック。Wazuh 標準ルール 87100 系。" },
+    "opnsense": { "label": "OPNsense", "stock": true, "howto": "System › Settings › Logging › Remote: Hostname {{MANAGER}}, Port 514, Transport UDP, Applications = filter。pfSense と同じ標準ルール。" },
+    "openwrt": { "label": "OpenWrt（iptables / nftables）", "stock": false, "howto": "System › Logging: External system log server = {{MANAGER}}, port 514。Firewall › General: 『Drop invalid packets』と WAN zone の Input=reject のログを有効化（/etc/config/firewall で option log '1'）。" },
+    "yamaha_rtx": { "label": "Yamaha RTX / NVR", "stock": false, "howto": "syslog host {{MANAGER}} / syslog notice on / ip filter の reject に対して『ip filter N reject ... (log)』を付ける（例: ip filter 1020 reject * * * * * ※ログ付きはフィルタ番号ごとに 'log' オプション）。" },
+    "nec_ix": { "label": "NEC IX シリーズ", "stock": false, "howto": "logging host {{MANAGER}} / logging subsystem all warn / ip access-list の deny にログ（log キーワード）を付ける。" },
+    "buffalo": { "label": "Buffalo / その他家庭用", "stock": false, "howto": "管理画面の『ログ』→『syslog 転送』で {{MANAGER}} を指定（機種により不可）。対応していない機種では、ルーターの前に OpenWrt 等を置く構成を案内します。" },
+    "other": { "label": "その他", "stock": false, "howto": "syslog を {{MANAGER}}:514/UDP に送れれば、AI にログのサンプルを見せてデコーダを作らせることができます（ウィザードのチャットで『このログを解析して』と貼り付け）。" }
+  }
+}

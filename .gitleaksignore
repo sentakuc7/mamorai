@@ -1,0 +1,3 @@
+# テスト用のダミー値（Wazuh の既定のデモ資格情報）。本物の秘密情報ではない
+server/src/gate/classify.test.ts:curl-auth-user:56
+server/src/gate/classify.test.ts:curl-auth-user:66

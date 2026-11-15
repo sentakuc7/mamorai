@@ -1,0 +1,41 @@
+# EDR-178（SCS P1-6）: SCS 評価基準の値を直接見る独自 SCA ポリシー（Windows）。
+# まだ配布しない: 配る前に実機で確認すること（指示書の方針）。
+#
+# - CIS の基準は SCS より厳しいため（ロックアウト 5 回以下 / パスワード 14 文字以上）、SCS の値（10 回 / 6 文字以上）で判定し直す。
+# - net accounts の出力は言語ごとに違うので使わない。secedit の出力（キー名は英語固定）を読む。
+# - 共有フォルダ（agent.conf）経由で配るポリシーのコマンド実行には、端末側で sca.remote_commands=1 が要る
+#   （local_internal_options.conf）。これを変えるかは配布前に決める。
+policy:
+  id: "scs_windows"
+  file: "scs_windows.yml"
+  name: "MamorAI: SCS ★3 評価基準の確認（Windows）"
+  description: "SCS評価制度 4-1-4-1・4-1-4-2 の値を確認する（MamorAI の自己評価の根拠用。評価機関の判定ではない）"
+  references:
+    - https://www.ipa.go.jp/security/scs/
+
+requirements:
+  title: "Windows であること"
+  description: "Windows"
+  condition: any
+  rules:
+    - 'r:HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows'
+
+checks:
+  - id: 90001
+    title: "SCS 4-1-4-1: アカウントロックアウトのしきい値が 1〜10 回"
+    description: "ログオンの試行が 10 回以内の失敗でロックされること（0 はロックしない）"
+    rationale: "SCS 4-1-4-1"
+    remediation: "ローカルセキュリティポリシー > アカウント ポリシー > アカウント ロックアウトのポリシー > アカウント ロックアウトのしきい値 を 10 以下（0 以外）にする"
+    condition: all
+    rules:
+      - 'c:powershell -NoProfile -NonInteractive -Command "$f=Join-Path $env:TEMP mamorai-scs.inf; secedit /export /cfg $f /areas SECURITYPOLICY | Out-Null; Get-Content $f; Remove-Item $f -Force" -> n:^LockoutBadCount\s*=\s*(\d+) compare >= 1'
+      - 'c:powershell -NoProfile -NonInteractive -Command "$f=Join-Path $env:TEMP mamorai-scs.inf; secedit /export /cfg $f /areas SECURITYPOLICY | Out-Null; Get-Content $f; Remove-Item $f -Force" -> n:^LockoutBadCount\s*=\s*(\d+) compare <= 10'
+
+  - id: 90002
+    title: "SCS 4-1-4-2: パスワードの最小文字数が 6 文字以上"
+    description: "ログオンのパスワードが 6 文字以上であること（Windows Hello の PIN は別途確認）"
+    rationale: "SCS 4-1-4-2"
+    remediation: "ローカルセキュリティポリシー > アカウント ポリシー > パスワードのポリシー > パスワードの長さ を 6 以上にする"
+    condition: all
+    rules:
+      - 'c:powershell -NoProfile -NonInteractive -Command "$f=Join-Path $env:TEMP mamorai-scs.inf; secedit /export /cfg $f /areas SECURITYPOLICY | Out-Null; Get-Content $f; Remove-Item $f -Force" -> n:^MinimumPasswordLength\s*=\s*(\d+) compare >= 6'

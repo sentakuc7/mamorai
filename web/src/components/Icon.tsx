@@ -1,0 +1,41 @@
+/** Shared stroke icons (24x24) replacing emoji in the MamorAI UI. */
+export const I = {
+  alerts: "M12 3l10 18H2zM12 10v4M12 17h.01",
+  history: "M6 2h9l5 5v15H6zM14 2v6h6M9 13h8M9 17h8",
+  search: "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4",
+  server: "M4 4h16v12H4zM8 20h8M12 16v4",
+  ai: "M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z",
+  chat: "M21 12a8 8 0 0 1-11.5 7.2L4 21l1.8-5.5A8 8 0 1 1 21 12z",
+  check: "M5 12l4.5 4.5L19 7",
+  tree: "M6 3v6M6 9h12v6M6 9v12M18 15v6",
+  globe: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18",
+  edit: "M4 20h4L19 9l-4-4L4 16zM14 6l4 4",
+  undo: "M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3",
+  archive: "M3 4h18v4H3zM5 8v12h14V8M10 12h4",
+  tag: "M3 12V4h8l10 10-8 8zM7.5 7.5h.01",
+  plus: "M12 5v14M5 12h14",
+  trash: "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3",
+  approve: "M9 12l2 2 4-4M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z",
+  clock: "M12 8v4l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z",
+  pin: "M9 4h6l-1 6 4 4H6l4-4zM12 14v7",
+  board: "M4 4h5v16H4zM10 4h5v10h-5zM16 4h4v7h-4z",
+  play: "M7 4l13 8-13 8z",
+  hosts: "M3 4h18v6H3zM3 14h18v6H3zM7 7h.01M7 17h.01",
+  book: "M4 4h11a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3zM18 20V7",
+  list: "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
+  key: "M15 7a4 4 0 1 1-3.9 5H3v3h3v3h3v-3h2.1A4 4 0 0 1 15 7zM16 10h.01",
+  lock: "M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4",
+  cloud: "M7 18a5 5 0 1 1 1-9.9A6 6 0 0 1 19 10a4 4 0 0 1-1 8z",
+  plug: "M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0zM12 16v5",
+  signal: "M5 12a7 7 0 0 1 14 0M8.5 12a3.5 3.5 0 0 1 7 0M12 12v9",
+  wrench: "M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z",
+  target: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 12h.01",
+  ban: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM5.6 5.6l12.8 12.8",
+  gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM4 12h2M18 12h2M12 4v2M12 18v2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M6.3 17.7l1.4-1.4M16.3 7.7l1.4-1.4",
+  pause: "M7 4h3v16H7zM14 4h3v16h-3z",
+  clip: "M21 11l-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7",
+};
+
+export function Ico({ d, size = 16, className = "text-teal-300" }: { d: string; size?: number; className?: string }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={`shrink-0 ${className}`}><path d={d} /></svg>;
+}

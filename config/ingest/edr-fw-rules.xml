@@ -1,0 +1,50 @@
+<!-- EDR Console 攻撃可視化: 家庭用ルーター / FW 拒否ログのルール（EDR-74）。配置先: /var/ossec/etc/rules/edr-fw-rules.xml
+     ID 100650〜100699 を使用。groups に firewall_drop を付けることで攻撃ソース定義 fw-drop（attack-profiles.json）が拾う。 -->
+<group name="edr_fw,firewall_drop,fw,">
+
+  <!-- netfilter（OpenWrt / iptables / nftables） -->
+  <rule id="100650" level="3">
+    <decoded_as>edr-netfilter</decoded_as>
+    <description>FW 拒否: $(srcip) → $(dstip):$(dstport)/$(protocol)（netfilter）</description>
+    <group>netfilter,</group>
+  </rule>
+  <rule id="100651" level="8" frequency="30" timeframe="120">
+    <if_matched_sid>100650</if_matched_sid>
+    <same_srcip />
+    <description>FW 拒否が集中: 同じ送信元 $(srcip) から 2 分間に 30 回以上（スキャンの可能性）</description>
+    <group>netfilter,recon,</group>
+  </rule>
+
+  <!-- Yamaha RTX / NVR -->
+  <rule id="100660" level="3">
+    <decoded_as>edr-yamaha-reject</decoded_as>
+    <description>FW 拒否: $(srcip) → $(dstip):$(dstport)/$(protocol)（Yamaha フィルタ $(filter_id)）</description>
+    <group>yamaha,</group>
+  </rule>
+  <rule id="100661" level="3">
+    <decoded_as>edr-yamaha-inspect</decoded_as>
+    <description>FW 拒否: $(srcip) → $(dstip):$(dstport)/$(protocol)（Yamaha INSPECT $(filter_id)）</description>
+    <group>yamaha,</group>
+  </rule>
+  <rule id="100662" level="8" frequency="30" timeframe="120">
+    <if_matched_group>yamaha</if_matched_group>
+    <same_srcip />
+    <description>FW 拒否が集中: 同じ送信元 $(srcip) から 2 分間に 30 回以上（Yamaha）</description>
+    <group>yamaha,recon,</group>
+  </rule>
+
+  <!-- NEC IX -->
+  <rule id="100670" level="3">
+    <decoded_as>edr-necix-acl</decoded_as>
+    <description>FW 拒否: $(srcip) → $(dstip):$(dstport)/$(protocol)（NEC IX ACL）</description>
+    <group>necix,</group>
+  </rule>
+
+  <!-- Sophos XG key=value（EDR-58 の 100600/100601 と併存可。既にある環境では本ルールは不要） -->
+  <rule id="100680" level="3">
+    <decoded_as>edr-sophos-kv</decoded_as>
+    <description>FW 拒否: $(srcip) → $(dstip):$(dstport)/$(protocol)（Sophos XG）</description>
+    <group>sophos,</group>
+  </rule>
+
+</group>

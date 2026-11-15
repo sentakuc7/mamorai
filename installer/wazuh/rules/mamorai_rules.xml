@@ -1,0 +1,262 @@
+<!-- EDR-89: watch MamorAI itself. Source: audit events (mamorai_audit.*) and app logs (pino). IDs 100700-100749. -->
+<group name="mamorai,">
+
+  <rule id="100700" level="0">
+    <decoded_as>mamorai</decoded_as>
+    <description>MamorAI: application log</description>
+  </rule>
+
+  <rule id="100701" level="5">
+    <if_sid>100700</if_sid>
+    <field name="level" type="pcre2">^(50|60)$</field>
+    <description>MamorAI: application error ($(msg))</description>
+    <group>mamorai_error,</group>
+  </rule>
+
+  <rule id="100702" level="0">
+    <if_sid>100700</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">.</field>
+    <description>MamorAI audit: $(mamorai_audit.event)</description>
+    <group>mamorai_audit,</group>
+  </rule>
+
+  <!-- authentication -->
+  <rule id="100703" level="3">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^auth\.login$</field>
+    <description>MamorAI: login succeeded (user $(mamorai_audit.actor_id) from $(mamorai_audit.payload.ip))</description>
+    <group>authentication_success,</group>
+  </rule>
+
+  <rule id="100704" level="5">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^auth\.login_failed$</field>
+    <description>MamorAI: login failed for $(mamorai_audit.payload.email) from $(mamorai_audit.payload.ip)</description>
+    <group>authentication_failed,</group>
+  </rule>
+
+  <rule id="100705" level="10" frequency="5" timeframe="300">
+    <if_matched_sid>100704</if_matched_sid>
+    <same_field>mamorai_audit.payload.ip</same_field>
+    <description>MamorAI: repeated login failures from $(mamorai_audit.payload.ip) (possible brute force)</description>
+    <group>authentication_failures,</group>
+  </rule>
+
+  <rule id="100706" level="8">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^auth\.password_changed$</field>
+    <description>MamorAI: password changed (user $(mamorai_audit.actor_id))</description>
+  </rule>
+
+  <!-- changes that widen what MamorAI (or someone holding it) can do -->
+  <rule id="100710" level="10">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^(api_token\.(created|updated)|api_access\.enabled|auth\.session_timeout_extended|user\.created|user\.mfa_reset|user\.role\w*|user\.updated|bootstrap\.admin_created|sshkey\.(generated|imported)|host\.(created|updated|hostkey_reset)|wazuh\.(created|updated)|cloud\.provider_(created|updated)|readonly\.\w+|allowlist\.\w+|autonomy\.\w+|protected_range\.deleted)$</field>
+    <description>MamorAI: privilege-relevant change $(mamorai_audit.event) by $(mamorai_audit.actor) $(mamorai_audit.actor_id)</description>
+    <group>mamorai_privilege,</group>
+  </rule>
+
+  <rule id="100711" level="7">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^(api_token\.revoked|api_access\.disabled|auth\.session_timeout_shortened|user\.(deleted|disabled)|sshkey\.deleted|host\.deleted|wazuh\.deleted|cloud\.provider_deleted|protected_range\.created|playbook\.(created|updated|deleted))$</field>
+    <description>MamorAI: configuration change $(mamorai_audit.event) by $(mamorai_audit.actor) $(mamorai_audit.actor_id)</description>
+  </rule>
+
+  <!-- EDR-90: second factor and lockouts -->
+  <rule id="100707" level="5">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^auth\.mfa_failed$</field>
+    <description>MamorAI: wrong 6-digit code (user $(mamorai_audit.payload.user_id) from $(mamorai_audit.payload.ip))</description>
+    <group>authentication_failed,</group>
+  </rule>
+
+  <rule id="100708" level="10">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^auth\.(locked|mfa_locked)$</field>
+    <description>MamorAI: sign-in locked after repeated failures ($(mamorai_audit.payload.email) from $(mamorai_audit.payload.ip))</description>
+    <group>authentication_failures,</group>
+  </rule>
+
+  <rule id="100709" level="8">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^auth\.(recovery_code_used|recovery_codes_regenerated)$</field>
+    <description>MamorAI: recovery code $(mamorai_audit.event) by user $(mamorai_audit.actor_id)</description>
+  </rule>
+
+  <rule id="100712" level="5">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^auth\.mfa_enrolled$</field>
+    <description>MamorAI: authenticator registered for user $(mamorai_audit.actor_id) from $(mamorai_audit.payload.ip)</description>
+  </rule>
+
+  <rule id="100713" level="6">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^auth\.login_blocked$</field>
+    <description>MamorAI: sign-in attempt while locked ($(mamorai_audit.payload.email) from $(mamorai_audit.payload.ip))</description>
+  </rule>
+
+  <!-- EDR-90: kill switch, step-up, dashboard front door -->
+  <rule id="100714" level="10">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^safety\.hold_on$</field>
+    <description>MamorAI: automatic approvals stopped (kill switch): $(mamorai_audit.payload.reason)</description>
+    <group>mamorai_change,</group>
+  </rule>
+
+  <rule id="100715" level="8">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^safety\.hold_off$</field>
+    <description>MamorAI: automatic approvals resumed by user $(mamorai_audit.actor_id)</description>
+    <group>mamorai_change,</group>
+  </rule>
+
+  <rule id="100716" level="3">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^(approval\.step_up_verified|wazuh_dashboard\.opened)$</field>
+    <description>MamorAI: $(mamorai_audit.event) by user $(mamorai_audit.actor_id)</description>
+  </rule>
+
+  <!-- what the AI did on hosts -->
+  <rule id="100720" level="3">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^(ssh\.write_executed|cloud\.action_executed)$</field>
+    <description>MamorAI: change executed on $(mamorai_audit.payload.host)</description>
+    <group>mamorai_change,</group>
+  </rule>
+
+  <rule id="100721" level="7">
+    <if_sid>100720</if_sid>
+    <field name="mamorai_audit.actor" type="pcre2">^agent$</field>
+    <field name="mamorai_audit.payload.status" type="pcre2">^failed$</field>
+    <description>MamorAI: change on $(mamorai_audit.payload.host) failed</description>
+    <group>mamorai_change,</group>
+  </rule>
+
+  <rule id="100722" level="6">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^approval\.auto_rollback$</field>
+    <description>MamorAI: approved change failed and was rolled back automatically (approval $(mamorai_audit.payload.approval_id))</description>
+    <group>mamorai_change,</group>
+  </rule>
+
+  <rule id="100723" level="4">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^approval\.auto$</field>
+    <description>MamorAI: change approved automatically ($(mamorai_audit.payload.why))</description>
+    <group>mamorai_change,</group>
+  </rule>
+
+  <!-- many host changes in a short time = runaway agent or a hijacked console -->
+  <rule id="100724" level="10" frequency="15" timeframe="600">
+    <if_matched_sid>100720</if_matched_sid>
+    <description>MamorAI: unusually many host changes in 10 minutes</description>
+    <group>mamorai_change,</group>
+  </rule>
+
+  <!-- EDR-121: host AI scan and host actions (stop service / block / isolate) -->
+  <rule id="100740" level="5">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^host\.action\.requested$</field>
+    <description>MamorAI: host action requested on $(mamorai_audit.payload.host): $(mamorai_audit.payload.op)</description>
+    <group>mamorai_change,</group>
+  </rule>
+
+  <rule id="100741" level="10">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^host\.action\.(applied|reverted)$</field>
+    <description>MamorAI: $(mamorai_audit.event) on $(mamorai_audit.payload.host): $(mamorai_audit.payload.op)</description>
+    <group>mamorai_change,</group>
+  </rule>
+
+  <rule id="100742" level="12">
+    <if_sid>100741</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^host\.action\.applied$</field>
+    <field name="mamorai_audit.payload.op" type="pcre2">^isolate$</field>
+    <description>MamorAI: host $(mamorai_audit.payload.host) was ISOLATED from the network</description>
+    <group>mamorai_change,</group>
+  </rule>
+
+  <rule id="100743" level="10">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^host\.action\.failed$</field>
+    <description>MamorAI: host action FAILED on $(mamorai_audit.payload.host): $(mamorai_audit.payload.op)</description>
+    <group>mamorai_change,</group>
+  </rule>
+
+  <rule id="100744" level="8">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^host\.action\.still_isolated$</field>
+    <description>MamorAI: $(mamorai_audit.payload.host) is still isolated (since $(mamorai_audit.payload.since))</description>
+  </rule>
+
+  <rule id="100745" level="10">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^host\.scan_diff_important$</field>
+    <description>MamorAI host scan: $(mamorai_audit.payload.host) has new exposed ports / admin accounts / remote-control software</description>
+    <group>mamorai_host_scan,</group>
+  </rule>
+
+  <rule id="100746" level="4">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^host\.scan_diff$</field>
+    <description>MamorAI host scan: $(mamorai_audit.payload.host) changed since the previous scan</description>
+    <group>mamorai_host_scan,</group>
+  </rule>
+
+  <rule id="100747" level="10">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^host\.scan_settings_privacy_off$</field>
+    <description>MamorAI: user names are now sent to the AI without pseudonyms (changed by user $(mamorai_audit.actor_id))</description>
+    <group>mamorai_privilege,</group>
+  </rule>
+
+  <rule id="100748" level="5">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^host\.agents_imported$</field>
+    <description>MamorAI: new Wazuh agents imported as hosts</description>
+  </rule>
+
+  <!-- EDR-130: agent packs -->
+  <rule id="100760" level="3">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^agent_pack\.(downloaded|updated)$</field>
+    <description>MamorAI: agent pack $(mamorai_audit.payload.os) r$(mamorai_audit.payload.rev) $(mamorai_audit.event)</description>
+    <group>mamorai_agent_pack,</group>
+  </rule>
+
+  <rule id="100761" level="5">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^agent_pack\.downloaded_with_secrets$</field>
+    <description>MamorAI: agent pack $(mamorai_audit.payload.os) r$(mamorai_audit.payload.rev) downloaded (contains the Tailscale key / enrollment password, encrypted zip) by user $(mamorai_audit.actor_id)</description>
+    <group>mamorai_agent_pack,</group>
+  </rule>
+
+  <rule id="100763" level="8">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^agent_pack\.secret_changed$</field>
+    <description>MamorAI: Tailscale auth key / Wazuh enrollment password for the agent packs changed by $(mamorai_audit.actor) $(mamorai_audit.actor_id)</description>
+    <group>mamorai_agent_pack,mamorai_privilege,</group>
+  </rule>
+
+  <rule id="100764" level="8">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^agent_pack\.tailscale_key_expiring$</field>
+    <description>MamorAI: the Tailscale auth key for agent packs expires in $(mamorai_audit.payload.days_left) days - create a new key and replace it (Settings > Agent pack)</description>
+    <group>mamorai_agent_pack,</group>
+  </rule>
+
+  <rule id="100765" level="10">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^agent_pack\.tailscale_key_expired$</field>
+    <description>MamorAI: the Tailscale auth key for agent packs has EXPIRED - new endpoints cannot join the tailnet automatically</description>
+    <group>mamorai_agent_pack,</group>
+  </rule>
+
+  <rule id="100762" level="8">
+    <if_sid>100702</if_sid>
+    <field name="mamorai_audit.event" type="pcre2">^agent_pack\.settings_changed$</field>
+    <description>MamorAI: agent pack settings changed by user $(mamorai_audit.actor_id) (manager addresses, groups, SSH access)</description>
+    <group>mamorai_agent_pack,mamorai_change,</group>
+  </rule>
+
+</group>
